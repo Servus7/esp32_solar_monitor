@@ -7,13 +7,13 @@ const char* ssid     = "ESP32-Access-Point";
 const char* password = "123456789";
 
 WebServer server(80);
-bool ledStatus = LOW;
+bool ledOn = false;
 
-String SendHTML(uint8_t ledStatus){
+String website(uint8_t ledOn) {
   String ptr = R"(
     <!DOCTYPE html>
     <html>
-      <head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">
+      <head><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
       <title>Solar Boat Monitor</title>
       <style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}
         body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}
@@ -30,10 +30,11 @@ String SendHTML(uint8_t ledStatus){
       <h3>Using Access Point(AP) Mode</h3>
   )";
   
-  if(ledStatus)
-  {ptr +="<p>LED Status: ON</p><a class=\"button button-off\" href=\"/led/off\">OFF</a>\n";}
-  else
-  {ptr +="<p>LED Status: OFF</p><a class=\"button button-on\" href=\"/led/on\">ON</a>\n";}
+  if (ledOn) {
+    ptr +="<p>LED Status: ON</p><a class=\"button button-off\" href=\"/led/off\">OFF</a>\n";
+  } else {
+    ptr +="<p>LED Status: OFF</p><a class=\"button button-on\" href=\"/led/on\">ON</a>\n";
+  }
 
   ptr +="</body>\n";
   ptr +="</html>\n";
@@ -41,17 +42,17 @@ String SendHTML(uint8_t ledStatus){
 }
 
 void handle_OnConnect() {
-  server.send(200, "text/html", SendHTML(ledStatus)); 
+  server.send(200, "text/html", website(ledOn)); 
 }
 
 void handle_ledOn() {
-  ledStatus = HIGH;
-  server.send(200, "text/html", SendHTML(true)); 
+  ledOn = true;
+  server.send(200, "text/html", website(true)); 
 }
 
 void handle_ledOff() {
-  ledStatus = LOW;
-  server.send(200, "text/html", SendHTML(false)); 
+  ledOn = false;
+  server.send(200, "text/html", website(false)); 
 }
 
 void handle_NotFound(){
@@ -76,5 +77,5 @@ void setup() {
 void loop() {
   server.handleClient();
 
-  digitalWrite(LED_PIN, ledStatus);
+  digitalWrite(LED_PIN, ledOn ? LOW : HIGH);
 }
