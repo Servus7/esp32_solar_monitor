@@ -1,81 +1,97 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <wifi_config.h>
+#include <ArduinoJson.h>
 
 #define LED_PIN 8
 
-const char* ssid     = "ESP32-Access-Point";
-const char* password = "123456789";
-
 WebServer server(80);
-bool ledOn = false;
 
-String website(uint8_t ledOn) {
+String website() {
   String ptr = R"(
-    <!DOCTYPE html>
-    <html>
-      <head><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-      <title>Solar Boat Monitor</title>
-      <style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}
-        body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}
-        .button {display: block;width: 80px;background-color: #3498db;border: none;color: white;padding: 13px 30px;text-decoration: none;font-size: 25px;margin: 0px auto 35px;cursor: pointer;border-radius: 4px;}
-        .button-on {background-color: #3498db;}
-        .button-on:active {background-color: #2980b9;}
-        .button-off {background-color: #34495e;}
-        .button-off:active {background-color: #2c3e50;}
-        p {font-size: 14px;color: #888;margin-bottom: 10px;}
-      </style>
-    </head>
-    <body>
-      <h1>ESP32 Web Server</h1>
-      <h3>Using Access Point(AP) Mode</h3>
-  )";
-  
-  if (ledOn) {
-    ptr +="<p>LED Status: ON</p><a class=\"button button-off\" href=\"/led/off\">OFF</a>\n";
-  } else {
-    ptr +="<p>LED Status: OFF</p><a class=\"button button-on\" href=\"/led/on\">ON</a>\n";
-  }
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Solar Monitor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <style>
+      html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}
+      body {margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}
+      p {font-size: 14px;color: #888;margin-bottom: 10px;}
+    </style>
+  </head>
+  <body>
+    <h1>ESP32 Web Server</h1>
+    <h3>Using Access Point(AP) Mode</h3>
+    <script>
+      function run() {
+        // Creating Our XMLHttpRequest object 
+        let xhr = new XMLHttpRequest();
 
-  ptr +="</body>\n";
-  ptr +="</html>\n";
+        // Making our connection  
+        xhr.open("GET", '/data', true);
+
+        // function execute after request is successful 
+        xhr.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                alert(this.responseText);
+            }
+        }
+        // Sending our request 
+        xhr.send();
+      }
+      run();
+    </script>
+  </body>
+</html>  
+  )";
+
   return ptr;
 }
 
-void handle_OnConnect() {
-  server.send(200, "text/html", website(ledOn)); 
+void requestRoot() {
+  Serial.println("request: GET /");
+  server.send(200, "text/html", website()); 
 }
 
-void handle_ledOn() {
-  ledOn = true;
-  server.send(200, "text/html", website(true)); 
+void requestData() {
+  Serial.println("request: GET /data");
+
+  // create json document
+  JsonDocument doc;
+  doc["sensor"] = "gps";
+  doc["time"] = 1351824120;
+  doc["data"][0] = 48.756080;
+  doc["data"][1] = 2.302038;
+
+  // convert to string
+  String json;
+  serializeJson(doc, json);
+
+  // respond
+  server.send(200, "text/json", json); 
 }
 
-void handle_ledOff() {
-  ledOn = false;
-  server.send(200, "text/html", website(false)); 
-}
-
-void handle_NotFound(){
+void requestNotFound() {
+  Serial.println("request: NOT FOUND");
   server.send(404, "text/plain", "Not found");
 }
 
 void setup() {
+  Serial.begin(9600);
   pinMode(LED_PIN, OUTPUT);
 
-  WiFi.softAP(ssid, password);
-
+  Serial.println("start wifi ap");
+  WiFi.softAP(WIFI_SSID, WIFI_PASSWORD);
   delay(100);
   
-  server.on("/", handle_OnConnect);
-  server.on("/led/on", handle_ledOn);
-  server.on("/led/off", handle_ledOff);
-  server.onNotFound(handle_NotFound);
-  
+  Serial.println("start server");
+  server.on("/", requestRoot);
+  server.on("/data", requestData);
+  server.onNotFound(requestNotFound);
   server.begin();
 }
 
 void loop() {
   server.handleClient();
-
-  digitalWrite(LED_PIN, ledOn ? LOW : HIGH);
 }
