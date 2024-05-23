@@ -1,4 +1,4 @@
-#platform.io
+# platform.io
 .pioenvs
 .piolibdeps
 .clang_complete
@@ -12,3 +12,6 @@
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
+
+# credentials
+wifi_config.h
